@@ -45,7 +45,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: launcher-linux-x86_64
+          name: GroveLauncher-Linux(x86_64)
           path: bin/
 
   windows-i686:
@@ -87,5 +87,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: launcher-windows-i686
+          name: GroveLauncher-Windows
           path: bin/
