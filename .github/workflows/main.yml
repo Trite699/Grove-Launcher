@@ -68,6 +68,24 @@ jobs:
       # NOTE: verify this matches the MXE triplet baked into the builder image
       TARGET_SPEC: i686-w64-mingw32.static
     steps:
+          
+      - name: Debug - inspect MXE install
+        run: |
+          echo "---- Contents of /opt/mxe/usr ----"
+          ls -la /opt/mxe/usr/ || echo "no /opt/mxe/usr"
+          echo "---- Looking for qmake anywhere under /opt/mxe ----"
+          find /opt/mxe -iname "qmake" 2>/dev/null
+          echo "---- Looking for qmake anywhere on the system ----"
+          find / -iname "qmake" -not -path "*/proc/*" 2>/dev/null
+
+      - name: Build
+        run: |
+          if [ -z "$TARGET_SPEC" ]; then
+            echo "::error::TARGET_SPEC is not set"
+            exit 1
+          fi
+          /opt/mxe/usr/${TARGET_SPEC}/qt5/bin/qmake
+          make -j$(nproc) release
       - name: Install dependencies
         # git must be installed BEFORE checkout, otherwise actions/checkout
         # falls back to a REST API zip download and misses the .git folder
