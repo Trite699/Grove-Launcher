@@ -1,12 +1,12 @@
 {
     "versions": [
         {
-            "version": "classic",
+            "version": "2026",
             "full": [
                 {
                     "action": "dl",
-                    "url": "https://s3.wasabisys.com/ao-downloads/base-classic.zip",
-                    "hash": "22b15c66660c34d007b04eadac3d8344c553ff2a"
+                    "url": "http://62.133.50.26/MysticalGrove/Launcher_Content/MysticalGrove.zip",
+                    "hash": "B2EF90439A09E227AB38E4047AF78FDE2357AF07"
                 }
             ]
         }
