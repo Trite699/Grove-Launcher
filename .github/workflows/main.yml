@@ -37,9 +37,16 @@ jobs:
           qmake -spec linux-clang
           make -j$(nproc)
 
+      - name: Locate build output
+        run: |
+          echo "Repository root:"
+          ls -la
+          echo "Looking for the launcher binary and any bin/ directories:"
+          find . -maxdepth 4 -iname "GroveLauncher*" -o -maxdepth 4 -type d -name "bin"
+
       - name: Package
         run: |
-          mv GroveLauncher/bin .
+          mv launcher/bin .
           upx -9 --force bin/GroveLauncher
 
       - name: Upload artifact
@@ -79,9 +86,16 @@ jobs:
           /opt/mxe/usr/${TARGET_SPEC}/qt5/bin/qmake
           make -j$(nproc) release
 
+      - name: Locate build output
+        run: |
+          echo "Repository root:"
+          ls -la
+          echo "Looking for the launcher binary and any bin/ directories:"
+          find . -maxdepth 4 -iname "GroveLauncher*" -o -maxdepth 4 -type d -name "bin"
+
       - name: Package
         run: |
-          mv GroveLauncher/bin .
+          mv launcher/bin .
           upx -9 --force bin/GroveLauncher.exe
 
       - name: Upload artifact
