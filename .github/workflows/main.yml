@@ -39,14 +39,22 @@ jobs:
 
       - name: Package
         run: |
-          mv GroveLauncher/bin .
-          upx -9 --force bin/GroveLauncher
+          # Find the compiled executable automatically (ignoring source files)
+          BIN_PATH=$(find . -type f -name "GroveLauncher" | grep -v "\.cpp" | head -n 1)
+          echo "Found executable at: $BIN_PATH"
+          
+          # Compress the executable
+          upx -9 --force "$BIN_PATH"
+          
+          # Move to a staging directory for the artifact upload
+          mkdir -p artifact_out
+          mv "$BIN_PATH" artifact_out/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: GroveLauncher-Linux(x86_64)
-          path: bin/
+          path: artifact_out/
 
   windows-i686:
     runs-on: ubuntu-latest
@@ -84,11 +92,19 @@ jobs:
 
       - name: Package
         run: |
-          mv GroveLauncher/bin .
-          upx -9 --force bin/GroveLauncher.exe
+          # Find the compiled executable automatically
+          BIN_PATH=$(find . -type f -name "GroveLauncher.exe" | head -n 1)
+          echo "Found executable at: $BIN_PATH"
+          
+          # Compress the executable
+          upx -9 --force "$BIN_PATH"
+          
+          # Move to a staging directory for the artifact upload
+          mkdir -p artifact_out
+          mv "$BIN_PATH" artifact_out/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: GroveLauncher-Windows
-          path: bin/
+          path: artifact_out/
