@@ -34,97 +34,58 @@ jobs:
 
       - name: Build
         run: |
-          set -e
           qmake -spec linux-clang
           make -j$(nproc)
 
       - name: Package
         run: |
-          BIN_PATH=$(find . -path "*/bin/launcher" -type f | grep -v "\.cpp" | head -n 1)
-          if [ -z "$BIN_PATH" ]; then
-            echo "::error::Could not find compiled launcher binary"
-            exit 1
-          fi
-          echo "Found executable at: $BIN_PATH"
-
-          upx -9 --force "$BIN_PATH"
-
-          mkdir -p artifact_out
-          mv "$BIN_PATH" artifact_out/GroveLauncher
+          mv GroveLauncher/bin .
+          upx -9 --force bin/GroveLauncher
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GroveLauncher-Linux(x86_64)
-          path: artifact_out/
+          name: launcher-linux-x86_64
+          path: bin/
 
   windows-i686:
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
+    runs-on: ubuntu-latest
+    container:
+      image: registry.gitlab.com/attorneyonline/ao2-client/builder-windows-i686
     steps:
       - name: Check out repository (with submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Set up MSYS2 (MinGW32)
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW32
-          update: true
-          install: >-
-            mingw-w64-i686-toolchain
-            mingw-w64-i686-qt5
-            mingw-w64-i686-libarchive
-            mingw-w64-i686-bzip2
-            mingw-w64-i686-xz
-            mingw-w64-i686-lz4
-            mingw-w64-i686-zstd
-            mingw-w64-i686-nettle
-            mingw-w64-i686-expat
-            mingw-w64-i686-libxml2
-            mingw-w64-i686-zlib
-            make
-            git
-            upx
+      - name: Trust the checked-out workspace
+        # Newer git refuses to operate on a repo owned by a different
+        # user, which is the case by default inside this container.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install --no-install-recommends -y upx git
 
       - name: Apply last-minute patches
         run: |
-          set -e
-          # NOTE: these patches were written for the old MXE-based build.
-          # Confirm they still apply / are still needed against this toolchain.
-          git apply --check launcher/ci.patch && git apply launcher/ci.patch
+          git apply launcher/ci.patch
           cd libs/QArchive
-          git apply --check ../QArchive.patch && git apply ../QArchive.patch
+          git apply ../QArchive.patch
 
       - name: Build
         run: |
-          set -e
-          qmake
-          mingw32-make -j$(nproc) release
+          /opt/mxe/usr/${TARGET_SPEC}/qt5/bin/qmake
+          make -j$(nproc) release
 
       - name: Package
         run: |
-          set -e
-          BIN_PATH=$(find . -path "*/bin/launcher.exe" -type f | head -n 1)
-          if [ -z "$BIN_PATH" ]; then
-            echo "::error::Could not find compiled launcher.exe binary"
-            exit 1
-          fi
-
-          mkdir -p artifact_out
-          cp "$BIN_PATH" artifact_out/GroveLauncher.exe
-
-          # Bundle required Qt DLLs since this is a dynamic build
-          windeployqt --release artifact_out/GroveLauncher.exe
-
-          # Compress just the exe; skip failure rather than kill the build
-          upx -9 --force artifact_out/GroveLauncher.exe || echo "upx failed, shipping uncompressed"
+          mv GroveLauncher/bin .
+          upx -9 --force bin/GroveLauncher.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GroveLauncher-Windows
-          path: artifact_out/
+          name: launcher-windows-i686
+          path: bin/
