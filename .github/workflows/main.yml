@@ -41,11 +41,15 @@ jobs:
         run: |
           # Find the compiled executable automatically (ignoring source files)
           BIN_PATH=$(find . -type f -name "GroveLauncher" | grep -v "\.cpp" | head -n 1)
+          if [ -z "$BIN_PATH" ]; then
+            echo "::error::Could not find compiled GroveLauncher binary"
+            exit 1
+          fi
           echo "Found executable at: $BIN_PATH"
-          
+
           # Compress the executable
           upx -9 --force "$BIN_PATH"
-          
+
           # Move to a staging directory for the artifact upload
           mkdir -p artifact_out
           mv "$BIN_PATH" artifact_out/
@@ -60,9 +64,12 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: registry.gitlab.com/attorneyonline/ao2-client/builder-windows-i686
+    env:
+      # NOTE: verify this matches the MXE triplet baked into the builder image
+      TARGET_SPEC: i686-w64-mingw32.static
     steps:
       - name: Install dependencies
-        # git must be installed BEFORE checkout, otherwise actions/checkout 
+        # git must be installed BEFORE checkout, otherwise actions/checkout
         # falls back to a REST API zip download and misses the .git folder
         run: |
           apt-get update
@@ -81,12 +88,24 @@ jobs:
 
       - name: Apply last-minute patches
         run: |
-          git apply launcher/ci.patch
-          cd libs/QArchive
-          git apply ../QArchive.patch
+          set -e
+          apply_patch() {
+            local dir="$1" patch="$2"
+            if ! (cd "$dir" && git apply --check "$patch" 2>/dev/null); then
+              echo "::error::Patch $patch does not apply cleanly in $dir (already applied, or upstream changed)"
+              exit 1
+            fi
+            (cd "$dir" && git apply "$patch")
+          }
+          apply_patch launcher ci.patch
+          apply_patch libs/QArchive ../QArchive.patch
 
       - name: Build
         run: |
+          if [ -z "$TARGET_SPEC" ]; then
+            echo "::error::TARGET_SPEC is not set"
+            exit 1
+          fi
           /opt/mxe/usr/${TARGET_SPEC}/qt5/bin/qmake
           make -j$(nproc) release
 
@@ -94,11 +113,15 @@ jobs:
         run: |
           # Find the compiled executable automatically
           BIN_PATH=$(find . -type f -name "GroveLauncher.exe" | head -n 1)
+          if [ -z "$BIN_PATH" ]; then
+            echo "::error::Could not find compiled GroveLauncher.exe binary"
+            exit 1
+          fi
           echo "Found executable at: $BIN_PATH"
-          
+
           # Compress the executable
           upx -9 --force "$BIN_PATH"
-          
+
           # Move to a staging directory for the artifact upload
           mkdir -p artifact_out
           mv "$BIN_PATH" artifact_out/
