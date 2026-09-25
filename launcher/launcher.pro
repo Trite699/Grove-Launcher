@@ -6,7 +6,7 @@
 
 QT       += core gui widgets network svg
 
-TARGET = launcher
+TARGET = GroveLauncher
 TEMPLATE = app
 
 DESTDIR = $$PWD/bin
