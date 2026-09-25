@@ -11,7 +11,7 @@ TEMPLATE = app
 
 DESTDIR = $$PWD/bin
 
-VERSION = 1.0.0 beta
+VERSION = 1.0.0
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 RC_ICONS = logo.ico
