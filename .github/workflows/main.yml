@@ -53,20 +53,23 @@ jobs:
     container:
       image: registry.gitlab.com/attorneyonline/ao2-client/builder-windows-i686
     steps:
-      - name: Check out repository (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - name: Install dependencies
+        # git must be installed BEFORE checkout, otherwise actions/checkout 
+        # falls back to a REST API zip download and misses the .git folder
+        run: |
+          apt-get update
+          apt-get install --no-install-recommends -y upx git
 
       - name: Trust the checked-out workspace
         # Newer git refuses to operate on a repo owned by a different
         # user, which is the case by default inside this container.
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        # Use '*' so recursive submodules are also trusted during checkout.
+        run: git config --global --add safe.directory '*'
 
-      - name: Install dependencies
-        run: |
-          apt-get update
-          apt-get install --no-install-recommends -y upx git
+      - name: Check out repository (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Apply last-minute patches
         run: |
