@@ -34,25 +34,23 @@ jobs:
 
       - name: Build
         run: |
+          set -e
           qmake -spec linux-clang
           make -j$(nproc)
 
       - name: Package
         run: |
-          # Find the compiled executable automatically (ignoring source files)
-          BIN_PATH=$(find . -type f -name "GroveLauncher" | grep -v "\.cpp" | head -n 1)
+          BIN_PATH=$(find . -path "*/bin/launcher" -type f | grep -v "\.cpp" | head -n 1)
           if [ -z "$BIN_PATH" ]; then
-            echo "::error::Could not find compiled GroveLauncher binary"
+            echo "::error::Could not find compiled launcher binary"
             exit 1
           fi
           echo "Found executable at: $BIN_PATH"
 
-          # Compress the executable
           upx -9 --force "$BIN_PATH"
 
-          # Move to a staging directory for the artifact upload
           mkdir -p artifact_out
-          mv "$BIN_PATH" artifact_out/
+          mv "$BIN_PATH" artifact_out/GroveLauncher
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -61,88 +59,69 @@ jobs:
           path: artifact_out/
 
   windows-i686:
-    runs-on: ubuntu-latest
-    container:
-      image: registry.gitlab.com/attorneyonline/ao2-client/builder-windows-i686
-    env:
-      # NOTE: verify this matches the MXE triplet baked into the builder image
-      TARGET_SPEC: i686-w64-mingw32.static
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
-          
-      - name: Debug - inspect MXE install
-        run: |
-          echo "---- Contents of /opt/mxe/usr ----"
-          ls -la /opt/mxe/usr/ || echo "no /opt/mxe/usr"
-          echo "---- Looking for qmake anywhere under /opt/mxe ----"
-          find /opt/mxe -iname "qmake" 2>/dev/null
-          echo "---- Looking for qmake anywhere on the system ----"
-          find / -iname "qmake" -not -path "*/proc/*" 2>/dev/null
-
-      - name: Build
-        run: |
-          if [ -z "$TARGET_SPEC" ]; then
-            echo "::error::TARGET_SPEC is not set"
-            exit 1
-          fi
-          /opt/mxe/usr/${TARGET_SPEC}/qt5/bin/qmake
-          make -j$(nproc) release
-      - name: Install dependencies
-        # git must be installed BEFORE checkout, otherwise actions/checkout
-        # falls back to a REST API zip download and misses the .git folder
-        run: |
-          apt-get update
-          apt-get install --no-install-recommends -y upx git
-
-      - name: Trust the checked-out workspace
-        # Newer git refuses to operate on a repo owned by a different
-        # user, which is the case by default inside this container.
-        # Use '*' so recursive submodules are also trusted during checkout.
-        run: git config --global --add safe.directory '*'
-
       - name: Check out repository (with submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
+      - name: Set up MSYS2 (MinGW32)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: true
+          install: >-
+            mingw-w64-i686-toolchain
+            mingw-w64-i686-qt5
+            mingw-w64-i686-libarchive
+            mingw-w64-i686-bzip2
+            mingw-w64-i686-xz
+            mingw-w64-i686-lz4
+            mingw-w64-i686-zstd
+            mingw-w64-i686-nettle
+            mingw-w64-i686-expat
+            mingw-w64-i686-libxml2
+            mingw-w64-i686-zlib
+            make
+            git
+            upx
+
       - name: Apply last-minute patches
         run: |
           set -e
-          apply_patch() {
-            local dir="$1" patch="$2"
-            if ! (cd "$dir" && git apply --check "$patch" 2>/dev/null); then
-              echo "::error::Patch $patch does not apply cleanly in $dir (already applied, or upstream changed)"
-              exit 1
-            fi
-            (cd "$dir" && git apply "$patch")
-          }
-          apply_patch launcher ci.patch
-          apply_patch libs/QArchive ../QArchive.patch
+          # NOTE: these patches were written for the old MXE-based build.
+          # Confirm they still apply / are still needed against this toolchain.
+          git apply --check launcher/ci.patch && git apply launcher/ci.patch
+          cd libs/QArchive
+          git apply --check ../QArchive.patch && git apply ../QArchive.patch
 
       - name: Build
         run: |
-          if [ -z "$TARGET_SPEC" ]; then
-            echo "::error::TARGET_SPEC is not set"
-            exit 1
-          fi
-          /opt/mxe/usr/${TARGET_SPEC}/qt5/bin/qmake
-          make -j$(nproc) release
+          set -e
+          qmake
+          mingw32-make -j$(nproc) release
 
       - name: Package
         run: |
-          # Find the compiled executable automatically
-          BIN_PATH=$(find . -type f -name "GroveLauncher.exe" | head -n 1)
+          set -e
+          BIN_PATH=$(find . -path "*/bin/launcher.exe" -type f | head -n 1)
           if [ -z "$BIN_PATH" ]; then
-            echo "::error::Could not find compiled GroveLauncher.exe binary"
+            echo "::error::Could not find compiled launcher.exe binary"
             exit 1
           fi
-          echo "Found executable at: $BIN_PATH"
 
-          # Compress the executable
-          upx -9 --force "$BIN_PATH"
-
-          # Move to a staging directory for the artifact upload
           mkdir -p artifact_out
-          mv "$BIN_PATH" artifact_out/
+          cp "$BIN_PATH" artifact_out/GroveLauncher.exe
+
+          # Bundle required Qt DLLs since this is a dynamic build
+          windeployqt --release artifact_out/GroveLauncher.exe
+
+          # Compress just the exe; skip failure rather than kill the build
+          upx -9 --force artifact_out/GroveLauncher.exe || echo "upx failed, shipping uncompressed"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
