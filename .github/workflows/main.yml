@@ -1,0 +1,91 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  linux-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            qtbase5-dev qt5-qmake qtchooser qtbase5-dev-tools \
+            qtmultimedia5-dev libqt5svg5-dev \
+            clang make pkg-config upx unzip \
+            libarchive-dev libbz2-dev liblzma-dev liblz4-dev libzstd-dev \
+            nettle-dev libexpat1-dev libxml2-dev
+
+      - name: Print toolchain versions
+        run: |
+          qmake --version
+          clang --version
+
+      - name: Build
+        run: |
+          qmake -spec linux-clang
+          make -j$(nproc)
+
+      - name: Package
+        run: |
+          mv launcher/bin .
+          upx -9 --force bin/launcher
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: launcher-linux-x86_64
+          path: bin/
+
+  windows-i686:
+    runs-on: ubuntu-latest
+    container:
+      image: registry.gitlab.com/attorneyonline/ao2-client/builder-windows-i686
+    steps:
+      - name: Check out repository (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Trust the checked-out workspace
+        # Newer git refuses to operate on a repo owned by a different
+        # user, which is the case by default inside this container.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install --no-install-recommends -y upx git
+
+      - name: Apply last-minute patches
+        run: |
+          git apply launcher/ci.patch
+          cd libs/QArchive
+          git apply ../QArchive.patch
+
+      - name: Build
+        run: |
+          /opt/mxe/usr/${TARGET_SPEC}/qt5/bin/qmake
+          make -j$(nproc) release
+
+      - name: Package
+        run: |
+          mv launcher/bin .
+          upx -9 --force bin/launcher.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: launcher-windows-i686
+          path: bin/
