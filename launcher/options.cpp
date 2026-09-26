@@ -8,7 +8,7 @@
 const std::map<const QString, const QVariant> Options::defaultOptions = {
     {"path", "."},
     {"repos/program", "https://s3.wasabisys.com/ao-manifests/program_${os}_${arch}.json"},
-    {"repos/assets", "https://s3.wasabisys.com/ao-manifests/assets.json"},
+    {"repos/assets", "http://62.133.50.26/MysticalGrove/Launcher_Content/assets.json"},
     {"checkOnLaunch", Qt::CheckState::Checked},
     {"version", APP_VERSION}
 };
