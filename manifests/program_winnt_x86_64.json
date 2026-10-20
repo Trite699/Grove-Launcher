@@ -1,0 +1,15 @@
+{
+  "versions": [
+    {
+      "version": "2.4.10",
+      "executable": "GroveAO",
+      "full": [
+        {
+          "action": "dl",
+          "url": "https://github.com/rhamn0us/GroveAO/releases/download/GroveAO/GroveAO.Windows.zip",
+          "hash": "fdc6cddeb7c0ed0373343169de52853f0699cd7d5614bd3be658cc12ff0a26fd"
+        }
+      ]
+    }
+  ]
+}

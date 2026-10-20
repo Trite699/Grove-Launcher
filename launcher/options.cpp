@@ -7,8 +7,8 @@
 
 const std::map<const QString, const QVariant> Options::defaultOptions = {
     {"path", "."},
-    {"repos/program", "https://s3.wasabisys.com/ao-manifests/program_winnt_x86_64.json"},
-    {"repos/assets", "http://62.133.50.117/MysticalGrove/Launcher_Content/assets.json"},
+    {"repos/program", "https://github.com/Trite699/Grove-Launcher/blob/master/manifests/program_winnt_x86_64.json"},
+    {"repos/assets", "https://github.com/Trite699/Grove-Launcher/blob/master/manifests/assets.json"},
     {"checkOnLaunch", Qt::CheckState::Checked},
     {"version", APP_VERSION}
 };
